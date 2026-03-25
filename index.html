@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>RR Wood Mart (Standalone Chrome Version)</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            wood: {
+              50: '#fcf1ec', 100: '#f6dfd1', 200: '#efc1ac', 300: '#e59d7d',
+              400: '#d9744c', 500: '#cf5429', 600: '#bb3f1c', 700: '#9b301a',
+              800: '#7e2a1b', 900: '#652518',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React & ReactDOM (UMD - meaning it runs offline/in-browser directly) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+  <!-- React Router -->
+  <script crossorigin src="https://unpkg.com/@remix-run/router@1.15.1/dist/router.umd.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-router@6.22.1/dist/umd/react-router.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-router-dom@6.22.1/dist/umd/react-router-dom.development.js"></script>
+
+  <!-- Babel (Compiles JSX live in the browser without Node.js) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    body {
+      background-color: #fdf5f1;
+      color: #2c1810;
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <!-- Main React Application -->
+  <script type="text/babel">
+    // Extracting hooks and router from the global window object (since we are not using 'import')
+    const { useState, useEffect, useContext, createContext, useRef } = React;
+    const { HashRouter, Routes, Route, Link, useParams, useNavigate } = ReactRouterDOM;
+
+    // --- MOCK OFFLINE DATABASE ---
+    const allProducts = [
+      { id: 1, name: 'Sheesham Wood Sofa', price: 25000, category: 'Living Room', woodType: 'Sheesham', description: 'Classic Indian hand-carved sofa. Brings absolute class to any living room.', imageUrl: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&q=80' },
+      { id: 2, name: 'Teak Wood Bed', price: 45000, category: 'Bedroom', woodType: 'Teak', description: 'Sturdy teak wood king bed. Lasts generations.', imageUrl: 'https://images.unsplash.com/photo-1505693314120-0d443867891c?w=800&q=80' },
+      { id: 3, name: 'Mango Wood Dining Table', price: 35000, category: 'Dining', woodType: 'Mango', description: '6-seater elegant dining table perfect for family functions.', imageUrl: 'https://images.unsplash.com/photo-1533090481720-856c6e3c1fdc?w=800&q=80' },
+      { id: 4, name: 'Engineered Wood Chair', price: 8000, category: 'Living Room', woodType: 'Engineered', description: 'Comfortable reading chair.', imageUrl: 'https://images.unsplash.com/photo-1592078615290-033ee584e267?w=800&q=80' },
+      { id: 5, name: 'Antique Bookshelf', price: 18000, category: 'Living Room', woodType: 'Mango', description: 'Spacious vintage bookshelf to hold your precious knowledge.', imageUrl: 'https://images.unsplash.com/photo-1594620302200-9a762244a156?w=800&q=80' },
+      { id: 6, name: 'Wooden Wardrobe', price: 32000, category: 'Bedroom', woodType: 'Sheesham', description: 'Large almirah for your clothes.', imageUrl: 'https://images.unsplash.com/photo-1595514535314-e5cbcf2e650a?w=800&q=80' }
+    ];
+
+    // --- OFFLINE AUTH CONTEXT ---
+    const AuthContext = createContext();
+    const AuthProvider = ({ children }) => {
+      const [user, setUser] = useState(null);
+      useEffect(() => {
+        const stored = localStorage.getItem('desiwood_offline_user');
+        if (stored) setUser(JSON.parse(stored));
+      }, []);
+      const login = (email, password) => {
+        const u = { _id: '1', name: 'Demo User', email };
+        setUser(u);
+        localStorage.setItem('desiwood_offline_user', JSON.stringify(u));
+      };
+      const logout = () => { setUser(null); localStorage.removeItem('desiwood_offline_user'); };
+      return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>;
+    };
+
+    // --- MAIN COMPONENTS ---
+    const Navbar = () => {
+      const { user, logout } = useContext(AuthContext);
+      const [dropdownOpen, setDropdownOpen] = useState(false);
+      const navigate = useNavigate();
+      const handleLogout = () => { logout(); setDropdownOpen(false); navigate('/'); };
+      return (
+        <nav className="bg-[#652518] text-[#fcf1ec] shadow-md sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between h-16 items-center">
+              <Link to="/" className="text-2xl font-bold">RR Wood <span className="text-[#e59d7d]">Mart</span></Link>
+              <div className="hidden sm:flex space-x-8">
+                <Link to="/" className="hover:text-[#e59d7d]">Home</Link>
+                <Link to="/products" className="hover:text-[#e59d7d]">All Products</Link>
+                <Link to="/category/living-room" className="hover:text-[#e59d7d]">Living Room</Link>
+              </div>
+              <div className="flex items-center space-x-6">
+                <div className="relative">
+                  {user ? (
+                    <div className="cursor-pointer font-bold" onClick={() => setDropdownOpen(!dropdownOpen)}>
+                      👤 {user.name.split(' ')[0]} ▾
+                    </div>
+                  ) : (
+                    <Link to="/login" className="font-bold flex items-center"><span>👤 Login</span></Link>
+                  )}
+                  {user && dropdownOpen && (
+                    <div className="absolute right-0 mt-3 w-40 bg-white shadow-xl py-2 rounded-md border border-[#f6dfd1] text-[#652518]">
+                      <Link to="/orders" className="block px-4 py-2 hover:bg-[#fcf1ec]" onClick={() => setDropdownOpen(false)}>📦 My Orders</Link>
+                      <button onClick={handleLogout} className="w-full text-left px-4 py-2 hover:bg-[#fcf1ec] text-red-600">↪️ Logout</button>
+                    </div>
+                  )}
+                </div>
+                <Link to="/checkout" className="font-bold">🛒 Cart (2)</Link>
+              </div>
+            </div>
+          </div>
+        </nav>
+      );
+    };
+
+    const Footer = () => (
+      <footer className="bg-[#4c1910] text-[#f6dfd1] py-10 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <h3 className="text-xl font-bold mb-2 text-white">RR Wood Mart</h3>
+          <p className="opacity-80 text-sm">Offline Local View Version. Authentic Indian craftsmanship brought to your modern home.</p>
+          <p className="opacity-60 mt-4 text-xs">&copy; {new Date().getFullYear()} RR Wood Mart. All rights reserved.</p>
+        </div>
+      </footer>
+    );
+
+    const HomePage = () => (
+      <div>
+        <section className="bg-[#f6dfd1] py-20 px-4 text-center">
+          <h1 className="text-4xl md:text-5xl font-bold text-[#652518] mb-6">Handcrafted Wooden Furniture</h1>
+          <p className="text-lg text-[#7e2a1b] mb-8 max-w-2xl mx-auto">Bring the warmth of authentic Indian woodwork to your home. Explore our premium collection without servers!</p>
+          <Link to="/products" className="bg-[#bb3f1c] hover:bg-[#9b301a] text-white font-bold py-3 px-8 rounded shadow-lg transition-transform hover:scale-105 inline-block">Explore Offline</Link>
+        </section>
+        <section className="py-16 max-w-7xl mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center mb-10 text-[#652518]">Our Furniture</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {['Living Room', 'Bedroom', 'Dining'].map(cat => (
+              <Link key={cat} to={`/category/${cat.toLowerCase().replace(' ', '-')}`} className="h-64 rounded-lg shadow-md bg-[#efc1ac] flex items-center justify-center text-3xl font-bold text-white relative overflow-hidden group">
+                <div className="absolute inset-0 bg-[#652518] opacity-50 group-hover:opacity-70 transition-opacity"></div>
+                <span className="relative z-10">{cat}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      </div>
+    );
+
+    const ProductListingPage = () => (
+      <div className="max-w-7xl mx-auto px-4 py-10 min-h-screen">
+        <h1 className="text-3xl font-bold text-[#652518] mb-8">All Products</h1>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {allProducts.map(p => (
+            <Link to={`/product/${p.id}`} key={p.id} className="bg-white rounded-lg shadow hover:shadow-xl border border-[#f6dfd1] p-0 block overflow-hidden">
+              <div className="h-48 bg-[#efc1ac] flex items-center justify-center overflow-hidden mb-4 rounded-t-lg">
+                <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover transition-transform hover:scale-110 duration-300" />
+              </div>
+              <div className="px-4 pb-4">
+                <div className="flex justify-between items-center mb-1">
+                  <p className="text-xs text-[#d9744c] font-medium">{p.category}</p>
+                  <p className="text-xs bg-[#fdf5f1] border border-[#f6dfd1] px-1 rounded text-[#9b301a]">{p.woodType}</p>
+                </div>
+                <h3 className="font-semibold text-[#652518] mb-2 truncate">{p.name}</h3>
+                <div className="flex justify-between items-center mt-4">
+                  <div className="font-bold text-[#9b301a] text-lg">₹{p.price.toLocaleString('en-IN')}</div>
+                  <button className="bg-[#fcf1ec] px-3 py-1 text-sm rounded text-[#cf5429]">View</button>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    );
+
+    const CategoryPage = () => {
+      const { categoryName } = useParams();
+      const cat = categoryName.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      const [maxPrice, setMaxPrice] = useState(50000);
+      const filtered = allProducts.filter(p => p.category === cat && p.price <= maxPrice);
+
+      return (
+        <div className="max-w-7xl mx-auto px-4 py-10 flex flex-col md:flex-row gap-8 min-h-screen">
+          <div className="w-full md:w-1/4 bg-white p-6 rounded shadow border border-[#f6dfd1] h-fit sticky top-24">
+            <h2 className="font-bold text-[#652518] mb-6 text-xl">Filters</h2>
+            <p className="text-sm font-semibold mb-2 text-[#7e2a1b]">Max Price: ₹{maxPrice.toLocaleString('en-IN')}</p>
+            <input type="range" min="1000" max="100000" step="1000" value={maxPrice} onChange={e => setMaxPrice(Number(e.target.value))} className="w-full accent-[#cf5429]" />
+          </div>
+          <div className="w-full md:w-3/4">
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-3xl font-bold text-[#652518]">{cat} Collection</h1>
+              <span className="bg-white px-3 py-1 rounded-full text-xs shadow-sm">{filtered.length} items</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filtered.map(p => (
+                <Link to={`/product/${p.id}`} key={p.id} className="bg-white rounded-lg shadow hover:shadow-xl border border-[#f6dfd1] block overflow-hidden group">
+                  <div className="h-40 bg-[#efc1ac] flex items-center justify-center overflow-hidden mb-2">
+                    <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  </div>
+                  <div className="px-4 py-3">
+                    <h3 className="font-semibold text-[#652518] truncate pr-2">{p.name}</h3>
+                    <div className="font-bold text-[#9b301a] mt-2 text-xl">₹{p.price.toLocaleString('en-IN')}</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const ProductPage = () => {
+      const { id } = useParams();
+      const p = allProducts.find(x => x.id === Number(id)) || allProducts[0];
+      return (
+        <div className="max-w-7xl mx-auto px-4 py-10 min-h-[70vh]">
+          <Link to="/products" className="text-[#cf5429] mb-6 inline-block font-medium">&larr; Back to Products</Link>
+          <div className="bg-white rounded-xl shadow-lg flex flex-col md:flex-row p-6 md:p-12 border border-[#f6dfd1]">
+            <div className="w-full md:w-1/2 flex items-center justify-center bg-[#fcf1ec] rounded-xl overflow-hidden border border-[#f6dfd1] max-h-96">
+              <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+            </div>
+            <div className="w-full md:w-1/2 md:pl-12 flex flex-col justify-center mt-6 md:mt-0">
+              <span className="text-[#d9744c] font-bold uppercase tracking-wider text-xs mb-2">{p.category}</span>
+              <h1 className="text-3xl md:text-4xl font-bold text-[#652518] mb-2">{p.name}</h1>
+              <div className="text-3xl font-bold text-[#9b301a] mb-6 border-b pb-6 border-[#fcf1ec]">₹{p.price.toLocaleString('en-IN')}</div>
+              <p className="text-[#7e2a1b] mb-8 leading-relaxed">{p.description}</p>
+
+              <div className="mb-6">
+                <h3 className="font-semibold text-[#652518] mb-2">Selected Wood:</h3>
+                <span className="bg-[#652518] text-white px-4 py-2 rounded-md shadow inline-block">{p.woodType} Wood</span>
+              </div>
+
+              <div className="flex gap-4 mt-auto">
+                <button
+                  onClick={() => alert(`Offline Mode: Added ${p.name} to cart!`)}
+                  className="flex-1 bg-[#cf5429] hover:bg-[#9b301a] text-white font-bold py-3 px-8 rounded shadow-md transition-colors"
+                >Add to Cart</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const LoginPage = () => {
+      const { login } = useContext(AuthContext);
+      const navigate = useNavigate();
+      return (
+        <div className="min-h-[70vh] flex items-center justify-center px-4">
+          <div className="bg-white p-8 rounded-xl shadow border border-[#f6dfd1] w-full max-w-sm text-center">
+            <h2 className="text-3xl font-bold text-[#652518] mb-2">Login</h2>
+            <p className="text-[#d9744c] mb-6 text-sm">Offline Local View Version</p>
+            <input type="text" placeholder="Email" value="demo@local.com" readOnly className="w-full mb-4 p-3 border border-[#f6dfd1] text-[#7e2a1b] bg-gray-50 rounded bg-[#fcf1ec]" />
+            <input type="password" placeholder="Password" value="123456" readOnly className="w-full mb-6 p-3 border border-[#f6dfd1] text-[#7e2a1b] bg-gray-50 rounded bg-[#fcf1ec]" />
+            <button onClick={() => { login('demo@local.com', '123456'); navigate('/'); }} className="w-full bg-[#cf5429] hover:bg-[#9b301a] transition-colors text-white p-3 rounded font-bold shadow-md">Sign In Offline</button>
+          </div>
+        </div>
+      );
+    };
+
+    const CheckoutPage = () => {
+      const { user } = useContext(AuthContext);
+      const navigate = useNavigate();
+      const [address, setAddress] = useState('');
+      const [method, setMethod] = useState('UPI');
+
+      const cart = [allProducts[0], allProducts[1]];
+      const subtotal = cart.reduce((a, b) => a + b.price, 0);
+      const gst = subtotal * 0.18;
+      const total = subtotal + gst;
+
+      if (!user) {
+        return <div className="text-center py-32 min-h-screen text-2xl font-bold text-[#cf5429]">Please <Link to="/login" className="underline hover:text-[#9b301a]">Login</Link> to Checkout.</div>;
+      }
+
+      return (
+        <div className="max-w-7xl mx-auto px-4 py-10 min-h-[70vh] flex flex-col lg:flex-row gap-8">
+          <div className="w-full lg:w-2/3 space-y-6">
+            <h1 className="text-3xl font-bold text-[#652518] mb-4">Checkout</h1>
+            <div className="bg-white p-6 rounded shadow border border-[#f6dfd1]">
+              <h2 className="text-xl font-bold mb-4 text-[#7e2a1b]">Shipping Address</h2>
+              <input type="text" placeholder="e.g. 123 MG Road, Mumbai, 400001" className="w-full p-3 border border-[#e59d7d] focus:outline-none focus:ring-1 focus:ring-[#cf5429] rounded" value={address} onChange={e => setAddress(e.target.value)} />
+            </div>
+            <div className="bg-white p-6 rounded shadow border border-[#f6dfd1]">
+              <h2 className="text-xl font-bold mb-4 text-[#7e2a1b]">Payment Method</h2>
+              <div className="flex gap-6">
+                <label className="flex gap-2 items-center cursor-pointer text-[#652518] font-semibold"><input type="radio" checked={method === 'UPI'} onChange={() => setMethod('UPI')} className="accent-[#cf5429] w-4 h-4" /> UPI</label>
+                <label className="flex gap-2 items-center cursor-pointer text-[#652518] font-semibold"><input type="radio" checked={method === 'COD'} onChange={() => setMethod('COD')} className="accent-[#cf5429] w-4 h-4" /> Cash on Delivery</label>
+              </div>
+            </div>
+            <div className="bg-white p-6 rounded shadow border border-[#f6dfd1]">
+              <h2 className="text-xl font-bold mb-4 text-[#7e2a1b]">Order Items</h2>
+              {cart.map(c => (
+                <div key={c.id} className="flex gap-4 items-center border-b pb-4 mb-4 last:border-0 last:mb-0">
+                  <div className="w-16 h-16 bg-[#fcf1ec] rounded overflow-hidden flex items-center justify-center"><img src={c.imageUrl} alt={c.name} className="w-full h-full object-cover" /></div>
+                  <div className="flex-grow text-[#652518]"><b>{c.name}</b></div>
+                  <div className="font-bold text-[#9b301a]">₹{c.price.toLocaleString('en-IN')}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="w-full lg:w-1/3 mt-12 lg:mt-12">
+            <div className="bg-[#fcf1ec] p-6 rounded shadow border border-[#e59d7d] sticky top-24">
+              <h2 className="text-xl font-bold mb-6 text-[#652518]">Price Details</h2>
+              <p className="flex justify-between mb-3 text-[#7e2a1b]"><span>Subtotal:</span> ₹{subtotal.toLocaleString('en-IN')}</p>
+              <p className="flex justify-between mb-3 text-[#7e2a1b]"><span>Delivery:</span> <span className="text-green-600 font-bold">FREE</span></p>
+              <p className="flex justify-between mb-3 border-b border-[#e59d7d] pb-4 text-[#7e2a1b]"><span>GST (18%):</span> ₹{gst.toLocaleString('en-IN')}</p>
+              <h3 className="flex justify-between font-bold text-2xl mt-4 text-[#652518]"><span>Total:</span> ₹{total.toLocaleString('en-IN')}</h3>
+              <button
+                className="w-full mt-8 bg-[#cf5429] text-white py-3 rounded font-bold hover:bg-[#9b301a] shadow-md transition-colors"
+                onClick={() => { alert(`Offline order submitted for ₹${total.toLocaleString('en-IN')}!`); navigate('/orders'); }}
+              >Confirm Offline Booking</button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const OrderHistoryPage = () => (
+      <div className="max-w-7xl mx-auto px-4 py-10 min-h-screen">
+        <h1 className="text-3xl font-bold text-[#652518] mb-8">My Orders</h1>
+        <div className="bg-white p-6 rounded-lg shadow-md border border-[#f6dfd1]">
+          <div className="flex flex-col md:flex-row justify-between border-b border-[#f6dfd1] pb-4 mb-4 bg-[#fcf1ec] -mx-6 -mt-6 p-6 rounded-t-lg">
+            <div className="mb-2 md:mb-0"><p className="text-sm font-bold text-[#7e2a1b]">Order Date</p><p className="text-[#652518] font-semibold">{new Date().toLocaleDateString()}</p></div>
+            <div className="mb-2 md:mb-0"><p className="text-sm font-bold text-[#7e2a1b]">Total Amount</p><p className="text-[#9b301a] font-bold">₹82,600</p></div>
+            <div className="text-left md:text-right"><p className="text-sm font-bold text-[#7e2a1b]">Status</p><p className="text-yellow-600 font-bold bg-yellow-100 inline-block px-2 rounded">Processing Offline</p></div>
+          </div>
+          <h3 className="font-bold text-lg text-[#652518] mb-2">Items Purchased</h3>
+          <p className="text-[#7e2a1b] font-medium">• Sheesham Wood Sofa (₹25,000)</p>
+          <p className="text-[#7e2a1b] font-medium">• Teak Wood Bed (₹45,000)</p>
+          <div className="mt-4 pt-4 border-t border-dashed border-gray-200">
+            <p className="text-xs text-gray-500">Note: This is simulated offline data since the NodeJS backend is disabled.</p>
+          </div>
+        </div>
+      </div>
+    );
+
+    const Chatbot = () => {
+      const [isOpen, setIsOpen] = useState(false);
+      const [msgs, setMsgs] = useState([{ txt: "Vanakkam! I'm the leo bot. 🪵\n. Try asking for 'cheap' or 'COD'!", bot: true }]);
+      const [inp, setInp] = useState('');
+      const [loading, setLoading] = useState(false);
+      const endRef = useRef(null);
+
+      useEffect(() => {
+        endRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, [msgs, isOpen]);
+
+      const handle = (e) => {
+        e.preventDefault();
+        if (!inp.trim()) return;
+        setMsgs(prev => [...prev, { txt: inp, bot: false }]);
+        const q = inp.toLowerCase();
+        setInp('');
+        setLoading(true);
+
+        setTimeout(() => {
+          let reply = "Hello! Since I am functioning in offline standalone mode, I don't have access to the Database. \n\nI recommend interacting with the user interface instead!";
+          if (q.includes('cheap') || q.includes('budget') || q.includes('₹') || q.includes('rs'))
+            reply = "₹15000 budget ku these offline options iruku 👍:\n\n🪵 Engineered Wood Chair - ₹8,000\n\n(Note: Filtered from local array)";
+          if (q.includes('cod') || q.includes('upi') || q.includes('pay'))
+            reply = "Haan ji, COD and UPI rendume available iruku! Just head to checkout!";
+          if (q.includes('custom'))
+            reply = "Yes! Email support@desiwoodmart.com for any customization.";
+
+          setMsgs(prev => [...prev, { txt: reply, bot: true }]);
+          setLoading(false);
+        }, 800);
+      };
+
+      return (
+        <div className="fixed bottom-6 right-6 z-50">
+          {!isOpen && <button onClick={() => setIsOpen(true)} className="bg-[#cf5429] hover:bg-[#9b301a] text-white p-4 rounded-full shadow-2xl text-2xl transition-transform hover:scale-110 flex items-center justify-center h-14 w-14 border-4 border-[#fdf5f1]">💬</button>}
+          {isOpen && (
+            <div className="bg-white rounded-xl shadow-2xl w-80 sm:w-96 flex flex-col h-[450px] border border-[#f6dfd1] overflow-hidden">
+              <div className="bg-[#652518] text-[#fcf1ec] p-3 flex justify-between items-center">
+                <b className="flex items-center gap-2">💬 Offline AI Assistant</b>
+                <button onClick={() => setIsOpen(false)} className="hover:text-white">✖</button>
+              </div>
+              <div className="flex-1 p-3 overflow-y-auto bg-[#fdf5f1] space-y-4">
+                {msgs.map((m, i) => <div key={i} className={`flex ${m.bot ? 'justify-start' : 'justify-end'}`}>
+                  <div className={`p-2.5 rounded-lg text-sm max-w-[80%] whitespace-pre-wrap shadow-sm ${m.bot ? 'bg-white border-[#e59d7d] border text-[#652518] rounded-tl-none' : 'bg-[#cf5429] text-white rounded-tr-none'}`}>{m.txt}</div>
+                </div>)}
+                {loading && <div className="p-2.5 rounded-lg text-sm bg-white border border-[#e59d7d] inline-block rounded-tl-none text-[#cf5429] animate-pulse shadow-sm">Thinking in browser...</div>}
+                <div ref={endRef} />
+              </div>
+              <form onSubmit={handle} className="flex p-3 border-t border-[#f6dfd1] bg-white gap-2">
+                <input value={inp} onChange={e => setInp(e.target.value)} className="flex-1 p-2 border border-[#e59d7d] focus:outline-none focus:ring-1 focus:ring-[#cf5429] rounded text-sm text-[#652518]" placeholder="Type local query..." />
+                <button disabled={!inp.trim() || loading} className="bg-[#cf5429] hover:bg-[#9b301a] text-white px-4 rounded transition-colors disabled:opacity-50">Send</button>
+              </form>
+            </div>
+          )}
+        </div>
+      )
+    };
+
+    const App = () => (
+      <AuthProvider>
+        <HashRouter>
+          <div className="flex flex-col min-h-screen bg-[#fdf5f1] font-sans">
+            <Navbar />
+            <main className="flex-grow">
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/products" element={<ProductListingPage />} />
+                <Route path="/category/:categoryName" element={<CategoryPage />} />
+                <Route path="/product/:id" element={<ProductPage />} />
+                <Route path="/checkout" element={<CheckoutPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/orders" element={<OrderHistoryPage />} />
+              </Routes>
+            </main>
+            <Footer />
+            <Chatbot />
+          </div>
+        </HashRouter>
+      </AuthProvider>
+    );
+
+    // Initialize React
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+
+</html>
